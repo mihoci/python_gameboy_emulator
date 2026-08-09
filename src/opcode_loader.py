@@ -75,7 +75,10 @@ class Opcodes:
 
 
 def load_opcodes():
-    opcode_json = json.loads(Path("opcodes.json").read_text(encoding="utf-8"))
+    opcode_json = json.loads(
+        (Path(__file__).parent / "opcodes.json").read_text(encoding="utf-8")
+    )
+
     opcodes = Opcodes()
     for opcode_type in opcode_json:
         for opcode in opcode_json[opcode_type]:

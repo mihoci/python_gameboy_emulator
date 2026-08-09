@@ -2,8 +2,8 @@ import struct
 from collections import namedtuple
 from pathlib import Path
 
-from decoder import Decoder
-from opcode_loader import load_opcodes
+from .decoder import Decoder
+from .opcode_loader import load_opcodes
 
 cartridge = Path("snake.gb").read_bytes()
 opcodes = load_opcodes()

@@ -1,7 +1,7 @@
 import sys
 from dataclasses import dataclass, replace
 
-from opcode_loader import Instruction, Opcodes
+from .opcode_loader import Instruction, Opcodes
 
 
 @dataclass
