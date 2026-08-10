@@ -4,7 +4,7 @@ A simple GameBoy written in Python with hopefully no dependencies other than Pyt
 
 ## Requirements
 
-- **Python**
+- Python >= 3.10
 
 ## Current Status
 
@@ -12,4 +12,6 @@ Just some printouts
 
 ## Run the project
 
-`python -m src.main`
+```python
+python src/main.py
+```
