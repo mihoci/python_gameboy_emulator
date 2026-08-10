@@ -1,3 +1,5 @@
+import argparse
+import sys
 from pathlib import Path
 
 from cpu import CPU, InstructionError
@@ -5,12 +7,20 @@ from decoder import Decoder
 from opcode_loader import load_opcodes
 from registers import Registers
 
-cartridge = Path("snake.gb").read_bytes()
-opcodes = load_opcodes()
-decoder = Decoder.create(opcodes=opcodes, data=cartridge)
-_, instruction = decoder.decode(0x150)
+parser = argparse.ArgumentParser()
+parser.add_argument("--cartridge", help="Path to .gb file")
+args = parser.parse_args()
 
-cpu = CPU(Registers(0, 0, 0, 0, 0, 0), decoder)
+if args.cartridge == None:
+    print("Cartridge file not specified")
+    sys.exit(0)
+
+cartridge = Path(args.cartridge).read_bytes()
+
+
+opcodes = load_opcodes()
+cpu = CPU(Registers(0, 0, 0, 0, 0, 0), Decoder.create(opcodes=opcodes, data=cartridge))
+
 try:
     cpu.run()
 except InstructionError as e:
