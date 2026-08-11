@@ -12,8 +12,8 @@ Just some printouts
 
 ## Run the project
 
-Pick a rom from https://hh.gbdev.io/ and run it with
+You're gonna need a DMG boot rom and a cartiridge rom. Boot rom you're gonna have to get by yourself and for cartridge just pick a rom from https://hh.gbdev.io/
 
 ```python
-python src/main.py --cartridge=path/to/some_gb_file.gb
+python src/main.py --boot=path/to/boot.bin --cartridge=path/to/some_gb_file.gb
 ```

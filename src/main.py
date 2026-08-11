@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import sys
 from pathlib import Path
 
@@ -7,16 +8,33 @@ from decoder import Decoder
 from opcode_loader import load_opcodes
 from registers import Registers
 
+BOOT_MD5 = "32fbbd84168d3482956eb3c5051637f5"
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--cartridge", help="Path to .gb file")
+parser.add_argument("--boot", help="Path to boot .bin file")
 args = parser.parse_args()
 
 if args.cartridge == None:
     print("Cartridge file not specified")
     sys.exit(0)
 
-cartridge = Path(args.cartridge).read_bytes()
+if args.boot == None:
+    print("Boot file not specified")
+    sys.exit(0)
 
+boot = Path(args.boot).read_bytes()
+md5_hash = hashlib.md5(boot).hexdigest()
+
+if BOOT_MD5 != md5_hash:
+    print(
+        f"Invalid boot.bin file. Make sure your boot.bin file is a dump of a DMB version of GameBoy.\nMD5\nGOT  {md5_hash}\nNEED {BOOT_MD5}"
+    )
+    sys.exit(0)
+
+# load cartridge and overwrite the first 256 bytes with boot
+cartridge = bytearray(Path(args.cartridge).read_bytes())
+cartridge = boot + cartridge[0x100:]
 
 opcodes = load_opcodes()
 cpu = CPU(Registers(0, 0, 0, 0, 0, 0), Decoder.create(opcodes=opcodes, data=cartridge))
