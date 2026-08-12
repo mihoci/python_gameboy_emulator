@@ -84,4 +84,4 @@ class Decoder:
             hex_data = " ".join(f"{b:02x}" for b in chunk)
             hex_data = hex_data.ljust(chunk_size * 3 - 1)
 
-            print(f"{addr:08x}: {hex_data} |")
+            print(f"{addr:04x}: {hex_data} |")
