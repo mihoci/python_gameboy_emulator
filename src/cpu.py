@@ -42,11 +42,10 @@ class CPU:
             value = self.registers[target_register.name]
         else:
             value = self.decoder.read(self.registers[target_register.name])
-
-        if value & BIT_MASKS[bit]:
-            self.registers["z"] = 0
-        else:
-            self.registers["z"] = 1
+        print(value & BIT_MASKS[bit])
+        self.registers["z"] = 1 if value & BIT_MASKS[bit] == 0 else 0
+        self.registers["n"] = 0
+        self.registers["h"] = 1
 
     def LD(self, instruction: Instruction) -> None:
         to_register = instruction.operands[0]
@@ -92,12 +91,20 @@ class CPU:
         VERIFIED_OPCODES = [0xAF]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
+
+        # always uses A register as first operand
         to_register = instruction.operands[0]
         from_register = instruction.operands[1]
-        value1 = self.registers[to_register.name]
-        value2 = self.registers[from_register.name]
-        result = value1 ^ value2
+        a_value = self.registers[to_register.name]
 
+        if from_register.immediate:
+            value = from_register.value or self.registers[from_register.name]
+        else:
+            value = self.decoder.read(self.registers[from_register.name])
+
+        result = a_value ^ value
         self.registers[to_register.name] = result
-        if result == 0:
-            self.registers["z"] = 1
+        self.registers["n"] = 0
+        self.registers["h"] = 0
+        self.registers["c"] = 0
+        self.registers["z"] = 1 if result == 0 else 0
