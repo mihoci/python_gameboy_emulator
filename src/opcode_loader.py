@@ -11,6 +11,8 @@ class Operand:
     bytes: int
     value: int | None
     adjust: Literal["+", "-"] | None
+    increment: bool | None
+    decrement: bool | None
 
     def create(self, value):
         return Operand(
@@ -19,6 +21,8 @@ class Operand:
             bytes=self.bytes,
             value=value,
             adjust=self.adjust,
+            increment=self.increment,
+            decrement=self.decrement,
         )
 
     def print(self):
@@ -94,6 +98,8 @@ def load_opcodes():
                             bytes=operand.get("bytes", None),
                             value=operand.get("value"),
                             adjust=operand.get("adjust"),
+                            increment=operand.get("increment"),
+                            decrement=operand.get("decrement"),
                         )
                         for operand in instruction.get("operands")
                     ],
