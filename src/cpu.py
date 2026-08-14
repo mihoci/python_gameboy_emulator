@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 
+from constants import BIT_MASKS, REGISTER_LIST
 from decoder import Decoder
 from opcode_loader import Instruction
-from registers import REGISTERS, REGISTERS_HIGH, REGISTERS_LOW, Registers
-
-REGISTER_LIST = [*REGISTERS_LOW, *REGISTERS_HIGH, *REGISTERS]
+from registers import Registers
 
 
 class InstructionError(Exception):
@@ -28,14 +27,26 @@ class CPU:
             print(f"{address:04x} {instruction.opcode:02x}  {instruction.print()}")
 
             # get instruction implementation
+            # instructions implemented based on https://gekkio.fi/files/gb-docs/gbctr.pdf
             execute = getattr(self, instruction.mnemonic, self.instruction_not_found)
             execute(instruction)
 
     def instruction_not_found(self, instruction: Instruction):
         raise InstructionError(f"Cannot execute {instruction}")
 
-    def NOP(self, instruction: Instruction) -> None:
-        return
+    def BIT(self, instruction: Instruction) -> None:
+        bit = instruction.operands[0].name
+        target_register = instruction.operands[1]
+
+        if target_register.immediate:
+            value = self.registers[target_register.name]
+        else:
+            value = self.decoder.read(self.registers[target_register.name])
+
+        if value & BIT_MASKS[bit]:
+            self.registers["z"] = 0
+        else:
+            self.registers["z"] = 1
 
     def LD(self, instruction: Instruction) -> None:
         to_register = instruction.operands[0]
@@ -73,6 +84,9 @@ class CPU:
             self.registers[to_register.name] += 1
         elif to_register.decrement:
             self.registers[to_register.name] -= 1
+
+    def NOP(self, instruction: Instruction) -> None:
+        return
 
     def XOR(self, instruction: Instruction) -> None:
         VERIFIED_OPCODES = [0xAF]

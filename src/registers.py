@@ -1,10 +1,7 @@
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 
-REGISTERS_LOW = {"F": "AF", "C": "BC", "E": "DE", "L": "HL"}
-REGISTERS_HIGH = {"A": "AF", "B": "BC", "D": "DE", "H": "HL"}
-REGISTERS = {"AF", "BC", "DE", "HL", "PC", "SP"}
-FLAGS = {"c": 4, "h": 5, "n": 6, "z": 7}
+from constants import FLAGS, REGISTERS, REGISTERS_HIGH, REGISTERS_LOW
 
 
 @dataclass
