@@ -42,10 +42,37 @@ class CPU:
             value = self.registers[target_register.name]
         else:
             value = self.decoder.read(self.registers[target_register.name])
-        print(value & BIT_MASKS[bit])
+
         self.registers["z"] = 1 if value & BIT_MASKS[bit] == 0 else 0
         self.registers["n"] = 0
         self.registers["h"] = 1
+
+    def DI(self, instruction: Instruction) -> None:
+        # TODO: implement after figuring out interrupts
+        pass
+
+    def JR(self, instruction: Instruction) -> None:
+        to_register = instruction.operands[0]
+
+        if len(instruction.operands) == 1:
+            self.registers.PC += to_register.value * (
+                1 if to_register.value & BIT_MASKS["7"] == 0 else -1
+            )
+        else:
+            match to_register.name:
+                case "NZ":
+                    condition = self.registers["z"] == 0
+                case "Z":
+                    condition = self.registers["z"] == 1
+                case "NC":
+                    condition = self.registers["c"] == 0
+                case "N":
+                    condition = self.registers["c"] == 1
+
+            if condition:
+                self.registers.PC = (
+                    self.registers.PC + instruction.operands[1].value
+                ) & 0b11111111
 
     def LD(self, instruction: Instruction) -> None:
         to_register = instruction.operands[0]
@@ -56,7 +83,7 @@ class CPU:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
         if from_register.name not in [*REGISTER_LIST, "n16"]:
-            print(f"Unknown opcode name{to_register.name}")
+            print(f"Unknown opcode name {to_register.name}")
 
         assert to_register.name in REGISTER_LIST
 
@@ -92,18 +119,18 @@ class CPU:
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
-        # always uses A register as first operand
-        to_register = instruction.operands[0]
-        from_register = instruction.operands[1]
-        a_value = self.registers[to_register.name]
+        operand1 = instruction.operands[0]
+        operand2 = instruction.operands[1]
+        # operand 1 is always A register
+        a_value = self.registers[operand1.name]
 
-        if from_register.immediate:
-            value = from_register.value or self.registers[from_register.name]
+        if operand2.immediate:
+            operand2_value = operand2.value or self.registers[operand2.name]
         else:
-            value = self.decoder.read(self.registers[from_register.name])
+            operand2_value = self.decoder.read(self.registers[operand2.name])
 
-        result = a_value ^ value
-        self.registers[to_register.name] = result
+        result = a_value ^ operand2_value
+        self.registers[operand1.name] = result
         self.registers["n"] = 0
         self.registers["h"] = 0
         self.registers["c"] = 0
