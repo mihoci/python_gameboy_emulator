@@ -16,7 +16,9 @@ class CPU:
     decoder: Decoder
 
     def run(self):
+        count = 0
         while True:
+            count += 1
             address = self.registers["PC"]
             try:
                 next_address, instruction = self.decoder.decode(address)
@@ -24,7 +26,9 @@ class CPU:
                 break
 
             self.registers["PC"] = next_address
-            print(f"{address:04x} {instruction.opcode:02x}  {instruction.print()}")
+            print(
+                f"{count:08d} {address:04x} {instruction.opcode:02x}  {instruction.print()}"
+            )
 
             # get instruction implementation
             # instructions implemented based on https://gekkio.fi/files/gb-docs/gbctr.pdf
@@ -78,12 +82,9 @@ class CPU:
         to_register = instruction.operands[0]
         from_register = instruction.operands[1]
 
-        VERIFIED_OPCODES = [0x31, 0x21, 0x32]
+        VERIFIED_OPCODES = [0x31, 0x21, 0x32, 0xE, 0x3E]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
-
-        if from_register.name not in [*REGISTER_LIST, "n16"]:
-            print(f"Unknown opcode name {to_register.name}")
 
         assert to_register.name in REGISTER_LIST
 
@@ -110,6 +111,29 @@ class CPU:
             self.registers[to_register.name] += 1
         elif to_register.decrement:
             self.registers[to_register.name] -= 1
+
+    def LDH(self, instruction: Instruction) -> None:
+        to_register = instruction.operands[0]
+        from_register = instruction.operands[1]
+
+        VERIFIED_OPCODES = [0xE2]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        if from_register.immediate:
+            value = self.registers[from_register.name]
+        elif from_register.name in REGISTER_LIST:
+            value = self.decoder.read(
+                0xFF00 | (self.registers[from_register.name] or from_register.value)
+            )
+
+        if to_register.immediate:
+            self.registers[to_register.name] = value
+        elif to_register.name in REGISTER_LIST:
+            self.decoder.write(
+                0xFF00 | (self.registers[to_register.name] or to_register.value),
+                value.to_bytes(),
+            )
 
     def NOP(self, instruction: Instruction) -> None:
         return
