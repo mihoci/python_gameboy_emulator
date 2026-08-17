@@ -39,6 +39,10 @@ class CPU:
         raise InstructionError(f"Cannot execute {instruction}")
 
     def BIT(self, instruction: Instruction) -> None:
+        """
+        Tests the bit of the 8-bit register
+        """
+
         bit = instruction.operands[0].name
         target_register = instruction.operands[1]
 
@@ -55,7 +59,37 @@ class CPU:
         # TODO: implement after figuring out interrupts
         pass
 
+    def INC(self, instruction: Instruction) -> None:
+        """
+        Increments data in the 8-bit register or at the absolute address specified by the 16-bit register HL
+        """
+        VERIFIED_OPCODES = [0xC]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        operand = instruction.operands[0]
+
+        if operand.immediate:
+            value = self.registers[operand.name]
+            result = (value + 1) & 0xFF
+            half_carry = ((value ^ 1 ^ result) >> 3) & 1
+            self.registers[operand.name] = result
+        else:
+            value = self.decoder.read(self.registers[operand.name])
+            result = (value + 1) & 0xFF
+            half_carry = ((value ^ 1 ^ result) >> 3) & 1
+            self.decoder.write(self.registers[operand.name], result)
+
+        if len(operand.name) == 1 or operand.immediate:
+            self.registers["z"] = 1 if value == 0 else 0
+            self.registers["n"] = 0
+            self.registers["h"] = half_carry
+
     def JR(self, instruction: Instruction) -> None:
+        """
+        Unconditional or conditional jump to the relative address specified by the signed 8-bit operand
+        """
+
         to_register = instruction.operands[0]
 
         if len(instruction.operands) == 1:
@@ -79,12 +113,15 @@ class CPU:
                 ) & 0b11111111
 
     def LD(self, instruction: Instruction) -> None:
-        to_register = instruction.operands[0]
-        from_register = instruction.operands[1]
-
+        """
+        Load data from register or address to specified register or address
+        """
         VERIFIED_OPCODES = [0x31, 0x21, 0x32, 0xE, 0x3E]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
+
+        to_register = instruction.operands[0]
+        from_register = instruction.operands[1]
 
         assert to_register.name in REGISTER_LIST
 
@@ -113,12 +150,15 @@ class CPU:
             self.registers[to_register.name] -= 1
 
     def LDH(self, instruction: Instruction) -> None:
-        to_register = instruction.operands[0]
-        from_register = instruction.operands[1]
-
+        """
+        Load data from register or address to specified register or address. Address is 16-bit obtained by setting the most significant byte to 0xFF and the least significant byte to the value from address or register
+        """
         VERIFIED_OPCODES = [0xE2]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
+
+        to_register = instruction.operands[0]
+        from_register = instruction.operands[1]
 
         if from_register.immediate:
             value = self.registers[from_register.name]
@@ -136,9 +176,15 @@ class CPU:
             )
 
     def NOP(self, instruction: Instruction) -> None:
+        """
+        No operation
+        """
         return
 
     def XOR(self, instruction: Instruction) -> None:
+        """
+        Performs a bitwise XOR operation between the A register and data in a register or at some address
+        """
         VERIFIED_OPCODES = [0xAF]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
