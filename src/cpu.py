@@ -55,6 +55,37 @@ class CPU:
         self.registers["n"] = 0
         self.registers["h"] = 1
 
+    def CALL(self, instruction: Instruction) -> None:
+        """
+        Conditional function call to the absolute address specified by the 16-bit operand
+        """
+        VERIFIED_OPCODES = [0x95]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        to_register = instruction.operands[0]
+        condition = True
+        if len(instruction.operands) > 1:
+            from_register = instruction.operands[1]
+            match to_register.name:
+                case "NZ":
+                    condition = self.registers["z"] == 0
+                case "Z":
+                    condition = self.registers["z"] == 1
+                case "NC":
+                    condition = self.registers["c"] == 0
+                case "N":
+                    condition = self.registers["c"] == 1
+
+        if not condition:
+            return
+
+        # decrease stack pointer by 2 and write 2 byte PC register in reverse order to the stack
+        self.registers.SP -= 2
+        self.decoder.write(self.registers.SP, (self.registers.PC).to_bytes(2, "little"))
+
+        self.registers.PC = to_register.value or from_register.value
+
     def DI(self, instruction: Instruction) -> None:
         # TODO: implement after figuring out interrupts
         pass
@@ -116,7 +147,7 @@ class CPU:
         """
         Load data from register or address to specified register or address
         """
-        VERIFIED_OPCODES = [0x31, 0x21, 0x32, 0xE, 0x3E]
+        VERIFIED_OPCODES = [0x31, 0x21, 0x32, 0xE, 0x3E, 0x77, 0x11, 0x1A, 0x4F, 0x6]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -128,7 +159,7 @@ class CPU:
         if from_register.immediate:
             value = from_register.value or self.registers[from_register.name]
         elif from_register.name in REGISTER_LIST:
-            value = self.decoder.read(from_register.name)
+            value = self.decoder.read(self.registers[from_register.name])
         else:
             raise InstructionError(f"Unimplemented operand from {instruction}")
 
@@ -153,7 +184,7 @@ class CPU:
         """
         Load data from register or address to specified register or address. Address is 16-bit obtained by setting the most significant byte to 0xFF and the least significant byte to the value from address or register
         """
-        VERIFIED_OPCODES = [0xE2]
+        VERIFIED_OPCODES = [0xE2, 0xE0]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -162,16 +193,16 @@ class CPU:
 
         if from_register.immediate:
             value = self.registers[from_register.name]
-        elif from_register.name in REGISTER_LIST:
+        else:
             value = self.decoder.read(
-                0xFF00 | (self.registers[from_register.name] or from_register.value)
+                0xFF00 | (from_register.value or self.registers[from_register.name])
             )
 
         if to_register.immediate:
             self.registers[to_register.name] = value
-        elif to_register.name in REGISTER_LIST:
+        else:
             self.decoder.write(
-                0xFF00 | (self.registers[to_register.name] or to_register.value),
+                0xFF00 | (to_register.value or self.registers[to_register.name]),
                 value.to_bytes(),
             )
 
