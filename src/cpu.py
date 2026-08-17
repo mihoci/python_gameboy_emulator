@@ -59,7 +59,7 @@ class CPU:
         """
         Conditional function call to the absolute address specified by the 16-bit operand
         """
-        VERIFIED_OPCODES = [0x95]
+        VERIFIED_OPCODES = [0xCD]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -210,7 +210,17 @@ class CPU:
         """
         No operation
         """
-        return
+
+    def PUSH(self, instruction: Instruction) -> None:
+        """
+        Push to the stack memory, data from the 16-bit register
+        """
+
+        self.registers.SP -= 2
+        self.decoder.write(
+            self.registers.SP,
+            (self.registers[instruction.operands[0].name]).to_bytes(2, "little"),
+        )
 
     def XOR(self, instruction: Instruction) -> None:
         """
