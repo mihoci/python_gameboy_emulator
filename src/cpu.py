@@ -222,6 +222,26 @@ class CPU:
             (self.registers[instruction.operands[0].name]).to_bytes(2, "little"),
         )
 
+    def RL(self, instruction: Instruction) -> None:
+        """
+        Rotates the register or address value left through the carry flag
+        """
+
+        operand = instruction.operands[0]
+        if operand.immediate:
+            value = self.registers[operand.name]
+        else:
+            value = self.decoder.read(self.registers[operand.name])
+
+        removed_bit = value >> 7
+        value = ((value << 1) & 0xFF) | self.registers["c"]
+        self.registers["c"] = removed_bit
+
+        if operand.immediate:
+            self.registers[operand.name] = value
+        else:
+            self.decoder.write(self.registers[operand.name], value.to_bytes())
+
     def XOR(self, instruction: Instruction) -> None:
         """
         Performs a bitwise XOR operation between the A register and data in a register or at some address

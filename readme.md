@@ -8,7 +8,7 @@ A simple GameBoy written in Python with hopefully no dependencies other than Pyt
 
 ## Current Status
 
-Just some printouts
+Loads bios and cartridge, decodes and executes them. Runs decoded instructions until unimplemented instruction is encountered. Executed instructions are printed out.
 
 ## Run the project
 
