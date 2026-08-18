@@ -51,9 +51,9 @@ class CPU:
         else:
             value = self.decoder.read(self.registers[target_register.name])
 
-        self.registers["z"] = 1 if value & BIT_MASKS[bit] == 0 else 0
-        self.registers["n"] = 0
         self.registers["h"] = 1
+        self.registers["n"] = 0
+        self.registers["z"] = 1 if value & BIT_MASKS[bit] == 0 else 0
 
     def CALL(self, instruction: Instruction) -> None:
         """
@@ -112,9 +112,9 @@ class CPU:
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or operand.immediate:
-            self.registers["z"] = 1 if value == 0 else 0
-            self.registers["n"] = 0
             self.registers["h"] = half_carry
+            self.registers["n"] = 0
+            self.registers["z"] = 1 if value == 0 else 0
 
     def JR(self, instruction: Instruction) -> None:
         """
@@ -235,12 +235,31 @@ class CPU:
 
         removed_bit = value >> 7
         value = ((value << 1) & 0xFF) | self.registers["c"]
-        self.registers["c"] = removed_bit
 
         if operand.immediate:
             self.registers[operand.name] = value
         else:
             self.decoder.write(self.registers[operand.name], value.to_bytes())
+
+        self.registers["c"] = removed_bit
+        self.registers["h"] = 0
+        self.registers["n"] = 0
+        self.registers["z"] = 1 if value == 0 else 0
+
+    def RLA(self, instruction: Instruction) -> None:
+        """
+        Rotates the A register value left through the carry flag
+        """
+        value = self.registers["A"]
+        print(bin(value))
+        removed_bit = value >> 7
+        value = ((value << 1) & 0xFF) | self.registers["c"]
+        print(bin(value))
+        print(removed_bit)
+        self.registers["c"] = removed_bit
+        self.registers["h"] = 0
+        self.registers["n"] = 0
+        self.registers["z"] = 0
 
     def XOR(self, instruction: Instruction) -> None:
         """
@@ -262,7 +281,7 @@ class CPU:
 
         result = a_value ^ operand2_value
         self.registers[operand1.name] = result
-        self.registers["n"] = 0
-        self.registers["h"] = 0
         self.registers["c"] = 0
+        self.registers["h"] = 0
+        self.registers["n"] = 0
         self.registers["z"] = 1 if result == 0 else 0
