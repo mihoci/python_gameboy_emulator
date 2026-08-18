@@ -211,6 +211,15 @@ class CPU:
         No operation
         """
 
+    def POP(self, instruction: Instruction) -> None:
+        """
+        Pops the data from the stack to the 16-bit register
+        """
+
+        operand = instruction.operands[0]
+        self.registers[operand.name] = self.decoder.read(self.registers.SP, 2)
+        self.registers.SP += 2
+
     def PUSH(self, instruction: Instruction) -> None:
         """
         Push to the stack memory, data from the 16-bit register
@@ -251,11 +260,9 @@ class CPU:
         Rotates the A register value left through the carry flag
         """
         value = self.registers["A"]
-        print(bin(value))
         removed_bit = value >> 7
         value = ((value << 1) & 0xFF) | self.registers["c"]
-        print(bin(value))
-        print(removed_bit)
+
         self.registers["c"] = removed_bit
         self.registers["h"] = 0
         self.registers["n"] = 0
