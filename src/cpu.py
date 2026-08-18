@@ -86,32 +86,60 @@ class CPU:
 
         self.registers.PC = to_register.value or from_register.value
 
+    def DEC(self, instruction: Instruction) -> None:
+        """
+        Increments data in the register or at the absolute address specified by the register HL
+        """
+        VERIFIED_OPCODES = [0x5]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        operand = instruction.operands[0]
+        bit_mask = 0xFF if len(operand.name) == 1 else 0xFFFF
+
+        if operand.immediate:
+            value = self.registers[operand.name]
+            result = (value - 1) & bit_mask
+            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
+            self.registers[operand.name] = result
+        else:
+            value = self.decoder.read(self.registers[operand.name])
+            result = (value - 1) & bit_mask
+            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
+            self.decoder.write(self.registers[operand.name], result)
+
+        if len(operand.name) == 1 or not operand.immediate:
+            self.registers["h"] = half_carry
+            self.registers["n"] = 1
+            self.registers["z"] = 1 if value == 0 else 0
+
     def DI(self, instruction: Instruction) -> None:
         # TODO: implement after figuring out interrupts
         pass
 
     def INC(self, instruction: Instruction) -> None:
         """
-        Increments data in the 8-bit register or at the absolute address specified by the 16-bit register HL
+        Increments data in the register or at the absolute address specified by the register HL
         """
-        VERIFIED_OPCODES = [0xC]
+        VERIFIED_OPCODES = [0xC, 0x23]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
         operand = instruction.operands[0]
+        bit_mask = 0xFF if len(operand.name) == 1 else 0xFFFF
 
         if operand.immediate:
             value = self.registers[operand.name]
-            result = (value + 1) & 0xFF
-            half_carry = ((value ^ 1 ^ result) >> 3) & 1
+            result = (value + 1) & bit_mask
+            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers[operand.name] = result
         else:
             value = self.decoder.read(self.registers[operand.name])
-            result = (value + 1) & 0xFF
-            half_carry = ((value ^ 1 ^ result) >> 3) & 1
+            result = (value + 1) & bit_mask
+            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
             self.decoder.write(self.registers[operand.name], result)
 
-        if len(operand.name) == 1 or operand.immediate:
+        if len(operand.name) == 1 or not operand.immediate:
             self.registers["h"] = half_carry
             self.registers["n"] = 0
             self.registers["z"] = 1 if value == 0 else 0
@@ -147,7 +175,19 @@ class CPU:
         """
         Load data from register or address to specified register or address
         """
-        VERIFIED_OPCODES = [0x31, 0x21, 0x32, 0xE, 0x3E, 0x77, 0x11, 0x1A, 0x4F, 0x6]
+        VERIFIED_OPCODES = [
+            0x31,
+            0x21,
+            0x32,
+            0xE,
+            0x3E,
+            0x77,
+            0x11,
+            0x1A,
+            0x4F,
+            0x6,
+            0x22,
+        ]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -216,8 +256,9 @@ class CPU:
         Pops the data from the stack to the 16-bit register
         """
 
-        operand = instruction.operands[0]
-        self.registers[operand.name] = self.decoder.read(self.registers.SP, 2)
+        self.registers[instruction.operands[0].name] = self.decoder.read(
+            self.registers.SP, 2
+        )
         self.registers.SP += 2
 
     def PUSH(self, instruction: Instruction) -> None:
