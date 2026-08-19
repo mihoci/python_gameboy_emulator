@@ -88,6 +88,27 @@ class CPU:
 
         self.registers["PC"] = to_register.value or from_register.value
 
+    def CP(self, instruction: Instruction) -> None:
+        """
+        Subtracts from the register A the immediate data, address data or register data and updates flags based on the result.
+        """
+        VERIFIED_OPCODES = [0xFE]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        subtrahend = instruction.operands[1]
+        if subtrahend.immediate:
+            subtrahend_value = subtrahend.value or self.registers[subtrahend.name]
+        else:
+            subtrahend_value = self.decoder.read(self.registers[subtrahend.name])
+
+        result = self.registers["A"] - subtrahend_value
+
+        self.registers["c"] = self.registers["A"] < subtrahend_value
+        self.registers["h"] = ((self.registers["A"] ^ 1 ^ result) & 0x10) >> 4
+        self.registers["n"] = 1
+        self.registers["z"] = 1 if result == 0 else 0
+
     def DEC(self, instruction: Instruction) -> None:
         """
         Increments data in the register or at the absolute address specified by the register HL
@@ -102,16 +123,14 @@ class CPU:
         if operand.immediate:
             value = self.registers[operand.name]
             result = (value - 1) & bit_mask
-            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers[operand.name] = result
         else:
             value = self.decoder.read(self.registers[operand.name])
             result = (value - 1) & bit_mask
-            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or not operand.immediate:
-            self.registers["h"] = half_carry
+            self.registers["h"] = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers["n"] = 1
             self.registers["z"] = 1 if value == 0 else 0
 
@@ -133,16 +152,14 @@ class CPU:
         if operand.immediate:
             value = self.registers[operand.name]
             result = (value + 1) & bit_mask
-            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers[operand.name] = result
         else:
             value = self.decoder.read(self.registers[operand.name])
             result = (value + 1) & bit_mask
-            half_carry = ((value ^ 1 ^ result) & 0x10) >> 4
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or not operand.immediate:
-            self.registers["h"] = half_carry
+            self.registers["h"] = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers["n"] = 0
             self.registers["z"] = 1 if value == 0 else 0
 
