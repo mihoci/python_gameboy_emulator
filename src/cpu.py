@@ -81,10 +81,12 @@ class CPU:
             return
 
         # decrease stack pointer by 2 and write 2 byte PC register in reverse order to the stack
-        self.registers.SP -= 2
-        self.decoder.write(self.registers.SP, (self.registers.PC).to_bytes(2, "little"))
+        self.registers["SP"] -= 2
+        self.decoder.write(
+            self.registers["SP"], (self.registers["PC"]).to_bytes(2, "little")
+        )
 
-        self.registers.PC = to_register.value or from_register.value
+        self.registers["PC"] = to_register.value or from_register.value
 
     def DEC(self, instruction: Instruction) -> None:
         """
@@ -121,7 +123,7 @@ class CPU:
         """
         Increments data in the register or at the absolute address specified by the register HL
         """
-        VERIFIED_OPCODES = [0xC, 0x23]
+        VERIFIED_OPCODES = [0xC, 0x23, 0x13]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -152,7 +154,7 @@ class CPU:
         to_register = instruction.operands[0]
 
         if len(instruction.operands) == 1:
-            self.registers.PC += to_register.value * (
+            self.registers["PC"] += to_register.value * (
                 1 if to_register.value & BIT_MASKS["7"] == 0 else -1
             )
         else:
@@ -167,8 +169,8 @@ class CPU:
                     condition = self.registers["c"] == 1
 
             if condition:
-                self.registers.PC = (
-                    self.registers.PC + instruction.operands[1].value
+                self.registers["PC"] = (
+                    self.registers["PC"] + instruction.operands[1].value
                 ) & 0b11111111
 
     def LD(self, instruction: Instruction) -> None:
@@ -187,6 +189,7 @@ class CPU:
             0x4F,
             0x6,
             0x22,
+            0x7B,
         ]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
@@ -257,20 +260,47 @@ class CPU:
         """
 
         self.registers[instruction.operands[0].name] = self.decoder.read(
-            self.registers.SP, 2
+            self.registers["SP"], 2
         )
-        self.registers.SP += 2
+        self.registers["SP"] += 2
 
     def PUSH(self, instruction: Instruction) -> None:
         """
         Push to the stack memory, data from the 16-bit register
         """
 
-        self.registers.SP -= 2
+        self.registers["SP"] -= 2
         self.decoder.write(
-            self.registers.SP,
+            self.registers["SP"],
             (self.registers[instruction.operands[0].name]).to_bytes(2, "little"),
         )
+
+    def RET(self, instruction: Instruction) -> None:
+        """
+        Pop two bytes from stack & jump to that address.
+        """
+
+        VERIFIED_OPCODES = [0xC9]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        condition = True
+        if len(instruction.operands) == 1:
+            match instruction.operands[0].name:
+                case "NZ":
+                    condition = self.registers["z"] == 0
+                case "Z":
+                    condition = self.registers["z"] == 1
+                case "NC":
+                    condition = self.registers["c"] == 0
+                case "N":
+                    condition = self.registers["c"] == 1
+
+        if not condition:
+            return
+
+        self.registers["PC"] = self.decoder.read(self.registers["SP"], 2)
+        self.registers["SP"] += 2
 
     def RL(self, instruction: Instruction) -> None:
         """
