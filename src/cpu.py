@@ -35,6 +35,9 @@ class CPU:
             execute = getattr(self, instruction.mnemonic, self.instruction_not_found)
             execute(instruction)
 
+    def get_signed_value(self, value):
+        return (value ^ 128) - 128
+
     def instruction_not_found(self, instruction: Instruction):
         raise InstructionError(f"Cannot execute {instruction}")
 
@@ -105,7 +108,7 @@ class CPU:
         result = self.registers["A"] - subtrahend_value
 
         self.registers["c"] = self.registers["A"] < subtrahend_value
-        self.registers["h"] = ((self.registers["A"] ^ 1 ^ result) & 0x10) >> 4
+        self.registers["h"] = ((self.registers["A"] ^ 1 ^ result) & 0b00010000) >> 4
         self.registers["n"] = 1
         self.registers["z"] = 1 if result == 0 else 0
 
@@ -113,7 +116,7 @@ class CPU:
         """
         Increments data in the register or at the absolute address specified by the register HL
         """
-        VERIFIED_OPCODES = [0x5]
+        VERIFIED_OPCODES = [0x5, 0x3D, 0xD]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -130,9 +133,9 @@ class CPU:
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or not operand.immediate:
-            self.registers["h"] = ((value ^ 1 ^ result) & 0x10) >> 4
+            self.registers["h"] = ((value ^ 1 ^ result) & 0b00010000) >> 4
             self.registers["n"] = 1
-            self.registers["z"] = 1 if value == 0 else 0
+            self.registers["z"] = 1 if result == 0 else 0
 
     def DI(self, instruction: Instruction) -> None:
         # TODO: implement after figuring out interrupts
@@ -142,9 +145,6 @@ class CPU:
         """
         Increments data in the register or at the absolute address specified by the register HL
         """
-        VERIFIED_OPCODES = [0xC, 0x23, 0x13]
-        if instruction.opcode not in VERIFIED_OPCODES:
-            print(f"Not yet verified {hex(instruction.opcode)}")
 
         operand = instruction.operands[0]
         bit_mask = 0xFF if len(operand.name) == 1 else 0xFFFF
@@ -159,9 +159,9 @@ class CPU:
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or not operand.immediate:
-            self.registers["h"] = ((value ^ 1 ^ result) & 0x10) >> 4
+            self.registers["h"] = ((value ^ 1 ^ result) & 0b00010000) >> 4
             self.registers["n"] = 0
-            self.registers["z"] = 1 if value == 0 else 0
+            self.registers["z"] = 1 if result == 0 else 0
 
     def JR(self, instruction: Instruction) -> None:
         """
@@ -171,9 +171,7 @@ class CPU:
         to_register = instruction.operands[0]
 
         if len(instruction.operands) == 1:
-            self.registers["PC"] += to_register.value * (
-                1 if to_register.value & BIT_MASKS["7"] == 0 else -1
-            )
+            self.registers["PC"] += self.get_signed_value(to_register.value)
         else:
             match to_register.name:
                 case "NZ":
@@ -186,9 +184,9 @@ class CPU:
                     condition = self.registers["c"] == 1
 
             if condition:
-                self.registers["PC"] = (
-                    self.registers["PC"] + instruction.operands[1].value
-                ) & 0b11111111
+                self.registers["PC"] += self.get_signed_value(
+                    instruction.operands[1].value
+                )
 
     def LD(self, instruction: Instruction) -> None:
         """
@@ -207,14 +205,17 @@ class CPU:
             0x6,
             0x22,
             0x7B,
+            0xEA,
+            0x2E,
+            0x67,
+            0x57,
+            0x1E,
         ]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
         to_register = instruction.operands[0]
         from_register = instruction.operands[1]
-
-        assert to_register.name in REGISTER_LIST
 
         if from_register.immediate:
             value = from_register.value or self.registers[from_register.name]
@@ -225,10 +226,10 @@ class CPU:
 
         if to_register.immediate:
             self.registers[to_register.name] = value
-        elif to_register.name in REGISTER_LIST:
-            self.decoder.write(self.registers[to_register.name], value.to_bytes())
         else:
-            raise InstructionError(f"Unimplemented operand to {instruction}")
+            self.decoder.write(
+                to_register.value or self.registers[to_register.name], value.to_bytes()
+            )
 
         if from_register.increment:
             self.registers[from_register.name] += 1
@@ -244,7 +245,7 @@ class CPU:
         """
         Load data from register or address to specified register or address. Address is 16-bit obtained by setting the most significant byte to 0xFF and the least significant byte to the value from address or register
         """
-        VERIFIED_OPCODES = [0xE2, 0xE0]
+        VERIFIED_OPCODES = [0xE2, 0xE0, 0xF0]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -331,17 +332,17 @@ class CPU:
             value = self.decoder.read(self.registers[operand.name])
 
         removed_bit = value >> 7
-        value = ((value << 1) & 0xFF) | self.registers["c"]
+        result = ((value << 1) & 0xFF) | self.registers["c"]
 
         if operand.immediate:
-            self.registers[operand.name] = value
+            self.registers[operand.name] = result
         else:
-            self.decoder.write(self.registers[operand.name], value.to_bytes())
+            self.decoder.write(self.registers[operand.name], result.to_bytes())
 
         self.registers["c"] = removed_bit
         self.registers["h"] = 0
         self.registers["n"] = 0
-        self.registers["z"] = 1 if value == 0 else 0
+        self.registers["z"] = 1 if result == 0 else 0
 
     def RLA(self, instruction: Instruction) -> None:
         """
@@ -349,12 +350,13 @@ class CPU:
         """
         value = self.registers["A"]
         removed_bit = value >> 7
-        value = ((value << 1) & 0xFF) | self.registers["c"]
+        result = ((value << 1) & 0xFF) | self.registers["c"]
 
+        self.registers["A"] = result
         self.registers["c"] = removed_bit
         self.registers["h"] = 0
         self.registers["n"] = 0
-        self.registers["z"] = 0
+        self.registers["z"] = 1 if result == 0 else 0
 
     def XOR(self, instruction: Instruction) -> None:
         """
