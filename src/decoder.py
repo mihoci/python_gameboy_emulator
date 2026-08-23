@@ -25,6 +25,16 @@ class Decoder:
         else:
             raise IndexError(f"read {address=} + {count=} is out of range")
 
+    def read_bytes(self, address_start: int, address_end: int):
+        if (
+            address_start < address_end
+            and address_start <= len(self.data)
+            and 0 <= address_end
+        ):
+            return self.data[address_start:address_end]
+        else:
+            raise IndexError(f"read {address_start=}, {address_end=} is out of range")
+
     def write(self, address: int, byte_data: bytes):
         byte_data_len = len(byte_data)
         if 0 <= address + byte_data_len <= len(self.data):
