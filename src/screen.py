@@ -22,28 +22,26 @@ class Screen:
         def update():
             ppm_header = f"P6\n{width} {height}\n255\n".encode()
             pixel_data = bytearray()
+            # TODO add background scrolling
+            viewport_position = self.decoder.read(0xFF42, 2)
+            vy = viewport_position >> 8
+            vx = viewport_position & 0xFF
+            LCDC = self.decoder.read(0xFF40)
 
-            for x in range(height):
-                for y in range(width // 8):
-                    address = 0x8000 + (y * 16) + (x * 2)
-                    block_data = self.decoder.read_bytes(address, address + 2)
-                    # if int.from_bytes(block_data):
-                    #     self.decoder.print(address, address + 16)
-                    if address == 0x8000:
-                        block_data = bytearray(b"\x3c\x7e")
-                    if address in [0x8002, 0x8004, 0x8006]:
-                        block_data = bytearray(b"\x42\x42")
-                    if address == 0x8008:
-                        block_data = bytearray(b"\x7e\x5e")
-                    if address == 0x800A:
-                        block_data = bytearray(b"\x7e\x0a")
-                    if address == 0x800C:
-                        block_data = bytearray(b"\x7c\x56")
-                    if address == 0x800E:
-                        block_data = bytearray(b"\x38\x7c")
+            if viewport_position and vx != 100:
+                pass
 
-                    byte1 = block_data[0]
-                    byte2 = block_data[1]
+            for y in range(height):
+                y_block = y // 8
+                y_block_line = y % 8
+                for x in range(width // 8):
+                    map_address = 0x9800 + x + (y_block * 32)
+                    map_data = self.decoder.read(map_address)
+                    tile_address = 0x8000 + (map_data * 16) + (y_block_line * 2)
+                    tile_data = self.decoder.read_bytes(tile_address, tile_address + 2)
+
+                    byte1 = tile_data[0]
+                    byte2 = tile_data[1]
 
                     for bit in range(8):
                         lsb = (byte1 >> 7 - bit) & 1
@@ -52,12 +50,11 @@ class Screen:
                         sum = lsb ^ msb
                         pixel_data.extend(colors[sum])
 
-            ppm_data = ppm_header + pixel_data
-            img = tk.PhotoImage(data=ppm_data).zoom(4, 4)
+            img = tk.PhotoImage(data=ppm_header + pixel_data).zoom(3, 3)
             label.config(image=img)
             label.image = img
 
-            root.after(1, update)
+            root.after(17, update)
 
         root = tk.Tk()
         label = tk.Label(root)

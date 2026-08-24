@@ -114,7 +114,7 @@ class CPU:
 
     def DEC(self, instruction: Instruction) -> None:
         """
-        Increments data in the register or at the absolute address specified by the register HL
+        Decrements data in the register or at the absolute address specified by the register HL
         """
         VERIFIED_OPCODES = [0x5, 0x3D, 0xD]
         if instruction.opcode not in VERIFIED_OPCODES:

@@ -18,14 +18,14 @@ class Decoder:
             data=data,
         )
 
-    def read(self, address: int, count: int = 1):
+    def read(self, address: int, count: int = 1) -> int:
         if 0 <= address + count <= len(self.data):
             v = self.data[address : address + count]
             return int.from_bytes(v, sys.byteorder)
         else:
             raise IndexError(f"read {address=} + {count=} is out of range")
 
-    def read_bytes(self, address_start: int, address_end: int):
+    def read_bytes(self, address_start: int, address_end: int) -> bytearray:
         if (
             address_start < address_end
             and address_start <= len(self.data)
@@ -78,7 +78,7 @@ class Decoder:
                 print(f"ERROR - {e!s}")
                 break
 
-    def print(self, start=0, end=None, offset=0):
+    def print(self, start=0, end=None, dump_to_file=False):
         """
         Prints a hex dump of byte data.
         """
@@ -86,12 +86,19 @@ class Decoder:
         chunk_size = 16
         end = end if end is not None else len(self.data)
         actual_end = min(end, len(self.data))
+        print_data = ""
 
         for i in range(start, actual_end, chunk_size):
             chunk = self.data[i : i + chunk_size]
-            addr = i + offset
+            addr = i
 
             hex_data = " ".join(f"{b:02x}" for b in chunk)
             hex_data = hex_data.ljust(chunk_size * 3 - 1)
 
-            print(f"{addr:04x}: {hex_data} |")
+            print_data += f"{addr:04x}: {hex_data} |\n"
+
+        if dump_to_file:
+            with open("file.txt", "w") as f:
+                f.write(print_data)
+        else:
+            print(print_data)
