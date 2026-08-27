@@ -41,6 +41,35 @@ class CPU:
     def instruction_not_found(self, instruction: Instruction):
         raise InstructionError(f"Cannot execute {instruction}")
 
+    def ADD(self, instruction: Instruction) -> None:
+        """
+        Add to a register value from a register
+        """
+        VERIFIED_OPCODES = [0x86]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        to_register = instruction.operands[0]
+        from_register = instruction.operands[1]
+        bit_mask = 0xFF if len(to_register.name) == 1 else 0xFFFF
+
+        if from_register.immediate:
+            from_value = from_register.value or self.registers[from_register.name]
+        else:
+            from_value = self.decoder.read(self.registers[from_register.name])
+
+        if to_register.immediate:
+            to_value = to_register.value or self.registers[to_register.name]
+            result = to_value + from_value
+            half_carry = ((to_value ^ from_value ^ result) & 0x10) >> 4
+            self.registers[to_register.name] = result & bit_mask
+            self.registers["c"] = result > 255
+            self.registers["h"] = half_carry
+            self.registers["n"] = 0
+            self.registers["z"] = 1 if result == 0 else 0
+        else:
+            raise InstructionError(f"Unimplemented operand from {instruction}")
+
     def BIT(self, instruction: Instruction) -> None:
         """
         Tests the bit of the 8-bit register
@@ -85,9 +114,7 @@ class CPU:
 
         # decrease stack pointer by 2 and write 2 byte PC register in reverse order to the stack
         self.registers["SP"] -= 2
-        self.decoder.write(
-            self.registers["SP"], (self.registers["PC"]).to_bytes(2, "little")
-        )
+        self.decoder.write(self.registers["SP"], (self.registers["PC"]).to_bytes(2, "little"))
 
         self.registers["PC"] = to_register.value or from_register.value
 
@@ -108,7 +135,7 @@ class CPU:
         result = self.registers["A"] - subtrahend_value
 
         self.registers["c"] = self.registers["A"] < subtrahend_value
-        self.registers["h"] = ((self.registers["A"] ^ 1 ^ result) & 0b00010000) >> 4
+        self.registers["h"] = ((self.registers["A"] ^ subtrahend_value ^ result) & 0x10) >> 4
         self.registers["n"] = 1
         self.registers["z"] = 1 if result == 0 else 0
 
@@ -133,7 +160,7 @@ class CPU:
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or not operand.immediate:
-            self.registers["h"] = ((value ^ 1 ^ result) & 0b00010000) >> 4
+            self.registers["h"] = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers["n"] = 1
             self.registers["z"] = 1 if result == 0 else 0
 
@@ -159,7 +186,7 @@ class CPU:
             self.decoder.write(self.registers[operand.name], result)
 
         if len(operand.name) == 1 or not operand.immediate:
-            self.registers["h"] = ((value ^ 1 ^ result) & 0b00010000) >> 4
+            self.registers["h"] = ((value ^ 1 ^ result) & 0x10) >> 4
             self.registers["n"] = 0
             self.registers["z"] = 1 if result == 0 else 0
 
@@ -184,9 +211,7 @@ class CPU:
                     condition = self.registers["c"] == 1
 
             if condition:
-                self.registers["PC"] += self.get_signed_value(
-                    instruction.operands[1].value
-                )
+                self.registers["PC"] += self.get_signed_value(instruction.operands[1].value)
 
     def LD(self, instruction: Instruction) -> None:
         """
@@ -231,9 +256,7 @@ class CPU:
         if to_register.immediate:
             self.registers[to_register.name] = value
         else:
-            self.decoder.write(
-                to_register.value or self.registers[to_register.name], value.to_bytes()
-            )
+            self.decoder.write(to_register.value or self.registers[to_register.name], value.to_bytes())
 
         if from_register.increment:
             self.registers[from_register.name] += 1
@@ -259,9 +282,7 @@ class CPU:
         if from_register.immediate:
             value = self.registers[from_register.name]
         else:
-            value = self.decoder.read(
-                0xFF00 | (from_register.value or self.registers[from_register.name])
-            )
+            value = self.decoder.read(0xFF00 | (from_register.value or self.registers[from_register.name]))
 
         if to_register.immediate:
             self.registers[to_register.name] = value
@@ -281,9 +302,7 @@ class CPU:
         Pops the data from the stack to the 16-bit register
         """
 
-        self.registers[instruction.operands[0].name] = self.decoder.read(
-            self.registers["SP"], 2
-        )
+        self.registers[instruction.operands[0].name] = self.decoder.read(self.registers["SP"], 2)
         self.registers["SP"] += 2
 
     def PUSH(self, instruction: Instruction) -> None:
@@ -380,7 +399,7 @@ class CPU:
         result = (self.registers["A"] - subtrahend_value) & 0xFF
 
         self.registers["c"] = self.registers["A"] < subtrahend_value
-        self.registers["h"] = ((self.registers["A"] ^ 1 ^ result) & 0b00010000) >> 4
+        self.registers["h"] = ((self.registers["A"] ^ subtrahend_value ^ result) & 0x10) >> 4
         self.registers["n"] = 1
         self.registers["z"] = 1 if result == 0 else 0
         self.registers["A"] = result
