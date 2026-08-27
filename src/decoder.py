@@ -26,11 +26,7 @@ class Decoder:
             raise IndexError(f"read {address=} + {count=} is out of range")
 
     def read_bytes(self, address_start: int, address_end: int) -> bytearray:
-        if (
-            address_start < address_end
-            and address_start <= len(self.data)
-            and 0 <= address_end
-        ):
+        if address_start < address_end and address_start <= len(self.data) and 0 <= address_end:
             return self.data[address_start:address_end]
         else:
             raise IndexError(f"read {address_start=}, {address_end=} is out of range")

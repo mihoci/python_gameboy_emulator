@@ -22,22 +22,17 @@ class Screen:
         def update():
             ppm_header = f"P6\n{width} {height}\n255\n".encode()
             pixel_data = bytearray()
-            # TODO add background scrolling
-            viewport_position = self.decoder.read(0xFF42, 2)
-            vy = viewport_position >> 8
-            vx = viewport_position & 0xFF
-            LCDC = self.decoder.read(0xFF40)
-
-            if viewport_position and vx != 100:
-                pass
+            viewport_position = self.decoder.read_bytes(0xFF42, 0xFF44)
+            vy = viewport_position[0]
+            vx = viewport_position[1]
 
             for y in range(height):
-                y_block = y // 8
-                y_block_line = y % 8
+                y_block = ((y + vy) // 8) * 32
+                y_block_line = ((y + vy) % 8) * 2
                 for x in range(width // 8):
-                    map_address = 0x9800 + x + (y_block * 32)
-                    map_data = self.decoder.read(map_address)
-                    tile_address = 0x8000 + (map_data * 16) + (y_block_line * 2)
+                    bg_map_address = 0x9800 + (x + vx) + y_block
+                    bg_map_data = self.decoder.read(bg_map_address)
+                    tile_address = 0x8000 + (bg_map_data * 16) + y_block_line
                     tile_data = self.decoder.read_bytes(tile_address, tile_address + 2)
 
                     byte1 = tile_data[0]
@@ -54,6 +49,8 @@ class Screen:
             label.config(image=img)
             label.image = img
 
+            # set line being drawn to 0x90 to indicate vblank period
+            self.decoder.write(0xFF44, 0x90.to_bytes())
             root.after(17, update)
 
         root = tk.Tk()

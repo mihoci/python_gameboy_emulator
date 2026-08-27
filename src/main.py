@@ -16,7 +16,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--cartridge", help="Path to .gb file")
 parser.add_argument("--boot", help="Path to boot .bin file")
 parser.add_argument(
-    "--display", action=argparse.BooleanOptionalAction, help="Render screen"
+    "--no_display",
+    action=argparse.BooleanOptionalAction,
+    help="Don't render screen",
 )
 args = parser.parse_args()
 
@@ -50,7 +52,7 @@ cpu = CPU(Registers(0, 0, 0, 0, 0, 0), decoder)
 screen = Screen(decoder)
 
 try:
-    if args.display:
+    if not args.no_display:
         screen_thread = threading.Thread(target=screen.display, daemon=True)
         screen_thread.start()
 

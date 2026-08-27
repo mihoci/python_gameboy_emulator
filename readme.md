@@ -8,7 +8,7 @@ A simple GameBoy written in Python with hopefully no dependencies other than Pyt
 
 ## Current Status
 
-Loads bios and cartridge, decodes and executes them. Runs decoded instructions until unimplemented instruction is encountered. Executed instructions are printed out.
+The emulator successfully loads the BIOS and cartridge, decodes and executes instructions. It continues running until an unimplemented instruction is encountered. Executed instructions are printed out, and the screen background is drawn to the viewport.
 
 ## Run the project
 
