@@ -95,7 +95,7 @@ class CPU:
         """
         Subtracts from the register A the immediate data, address data or register data and updates flags based on the result.
         """
-        VERIFIED_OPCODES = [0xFE]
+        VERIFIED_OPCODES = [0xFE, 0xBE]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -116,7 +116,7 @@ class CPU:
         """
         Decrements data in the register or at the absolute address specified by the register HL
         """
-        VERIFIED_OPCODES = [0x5, 0x3D, 0xD]
+        VERIFIED_OPCODES = [0x5, 0x3D, 0xD, 0x1D]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
 
@@ -210,6 +210,10 @@ class CPU:
             0x67,
             0x57,
             0x1E,
+            0x7C,
+            0x16,
+            0x7D,
+            0x78,
         ]
         if instruction.opcode not in VERIFIED_OPCODES:
             print(f"Not yet verified {hex(instruction.opcode)}")
@@ -357,6 +361,29 @@ class CPU:
         self.registers["h"] = 0
         self.registers["n"] = 0
         self.registers["z"] = 1 if result == 0 else 0
+
+    def SUB(self, instruction: Instruction) -> None:
+        """
+        Subtracts from the register A the immediate data, address data or register data.
+        """
+
+        VERIFIED_OPCODES = [0x90]
+        if instruction.opcode not in VERIFIED_OPCODES:
+            print(f"Not yet verified {hex(instruction.opcode)}")
+
+        subtrahend = instruction.operands[1]
+        if subtrahend.immediate:
+            subtrahend_value = subtrahend.value or self.registers[subtrahend.name]
+        else:
+            subtrahend_value = self.decoder.read(self.registers[subtrahend.name])
+
+        result = (self.registers["A"] - subtrahend_value) & 0xFF
+
+        self.registers["c"] = self.registers["A"] < subtrahend_value
+        self.registers["h"] = ((self.registers["A"] ^ 1 ^ result) & 0b00010000) >> 4
+        self.registers["n"] = 1
+        self.registers["z"] = 1 if result == 0 else 0
+        self.registers["A"] = result
 
     def XOR(self, instruction: Instruction) -> None:
         """
